@@ -6,7 +6,6 @@ import { Pads } from './components/Pads';
 import { Traces } from './components/Traces';
 import { SMDPadManager } from './components/SMDPadManager';
 import { TraceManager } from './components/TraceManager';
-import { Serialization } from './utils/Serialization';
 
 interface Toast {
   id: string;
@@ -368,18 +367,20 @@ export const PCBViewer: React.FC<PCBViewerProps> = ({
         ))}
       </div>
       
-      <style jsx>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes slideIn {
+            from {
+              opacity: 0;
+              transform: translateY(-20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
           }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
+        `
+      }} />
     </div>
   );
 };
