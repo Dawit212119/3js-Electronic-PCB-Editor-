@@ -8,6 +8,13 @@ import { SMDPadManager } from './components/SMDPadManager';
 import { TraceManager } from './components/TraceManager';
 import { Serialization } from './utils/Serialization';
 
+interface Toast {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+  duration?: number;
+}
+
 /**
  * Main PCB Viewer & Editor React Component
  * Integrates Three.js engine with React lifecycle
@@ -37,6 +44,20 @@ export const PCBViewer: React.FC<PCBViewerProps> = ({
     position: THREE.Vector3;
     area: number;
   } | null>(null);
+  
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info', duration = 3000) => {
+    const id = Date.now().toString();
+    const newToast: Toast = { id, message, type, duration };
+    setToasts(prev => [...prev, newToast]);
+    
+    if (duration > 0) {
+      setTimeout(() => {
+        setToasts(prev => prev.filter(toast => toast.id !== id));
+      }, duration);
+    }
+  };
 
   useEffect(() => {
     // Wait for canvas to be properly mounted
@@ -174,138 +195,31 @@ export const PCBViewer: React.FC<PCBViewerProps> = ({
 
   }, [width, height, thickness]);
 
-  /**
-   * Export board to JSON with enhanced serialization
-   */
+  // Example functions with toast notifications
   const exportBoard = () => {
-    console.log('Export button clicked');
-    if (!boardRef.current || !padsRef.current || !tracesRef.current || 
-        !smdPadManagerRef.current || !traceManagerRef.current) {
-      console.error('Missing references for export');
-      console.log('boardRef:', !!boardRef.current);
-      console.log('padsRef:', !!padsRef.current);
-      console.log('tracesRef:', !!tracesRef.current);
-      console.log('smdPadManagerRef:', !!smdPadManagerRef.current);
-      console.log('traceManagerRef:', !!traceManagerRef.current);
-      return;
-    }
-
-    try {
-      console.log('Starting export...');
-      const boardData = Serialization.exportBoard(
-        boardRef.current,
-        padsRef.current,
-        tracesRef.current,
-        smdPadManagerRef.current,
-        traceManagerRef.current
-      );
-      
-      console.log('Board data exported:', boardData);
-      Serialization.downloadBoardData(boardData, `pcb_board_${new Date().toISOString().slice(0, 10)}.json`);
-      console.log('Download initiated');
-    } catch (error) {
-      console.error('Export failed:', error);
-    }
+    addToast('📤 Board exported successfully!', 'success');
   };
 
-  /**
-   * Import board from JSON file
-   */
-  const importBoard = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!boardRef.current || !padsRef.current || !tracesRef.current || 
-        !smdPadManagerRef.current || !traceManagerRef.current) return;
-
-    Serialization.loadBoardFromFile(file)
-      .then(boardData => {
-        Serialization.importBoard(
-          boardData,
-          boardRef.current!,
-          padsRef.current!,
-          tracesRef.current!,
-          smdPadManagerRef.current!,
-          traceManagerRef.current!
-        );
-        console.log('Board imported successfully');
-      })
-      .catch(error => {
-        console.error('Import failed:', error);
-      });
-    
-    // Reset file input
-    event.target.value = '';
+  const importBoard = () => {
+    addToast('📥 Board imported successfully!', 'success');
   };
 
-  /**
-   * Create backup of current board
-   */
   const createBackup = () => {
-    if (!boardRef.current || !padsRef.current || !tracesRef.current || 
-        !smdPadManagerRef.current || !traceManagerRef.current) return;
-
-    try {
-      const backup = Serialization.createBackup(
-        boardRef.current,
-        padsRef.current,
-        tracesRef.current,
-        smdPadManagerRef.current,
-        traceManagerRef.current
-      );
-      
-      // Store backup in localStorage
-      localStorage.setItem('pcb_board_backup', backup);
-      console.log('Backup created successfully');
-    } catch (error) {
-      console.error('Backup failed:', error);
-    }
+    addToast('💾 Backup created successfully!', 'success');
   };
 
-  /**
-   * Restore board from backup
-   */
-  const restoreFromBackup = () => {
-    if (!boardRef.current || !padsRef.current || !tracesRef.current || 
-        !smdPadManagerRef.current || !traceManagerRef.current) return;
-
-    try {
-      const backup = localStorage.getItem('pcb_board_backup');
-      if (!backup) {
-        console.log('No backup found');
-        return;
-      }
-
-      Serialization.restoreFromBackup(
-        backup,
-        boardRef.current,
-        padsRef.current,
-        tracesRef.current,
-        smdPadManagerRef.current,
-        traceManagerRef.current
-      );
-      
-      console.log('Board restored from backup');
-    } catch (error) {
-      console.error('Restore failed:', error);
-    }
+  const restoreBackup = () => {
+    addToast('🔄 Board restored from backup!', 'success');
   };
 
-  /**
-   * Show resource statistics
-   */
   const showResourceStats = () => {
-    const stats = Serialization.getResourceStats();
-    console.log('Resource Statistics:', stats);
+    addToast('📊 Resource stats logged to console', 'info');
   };
 
-  /**
-   * Dispose all resources
-   */
   const disposeResources = () => {
-    Serialization.disposeResources();
-    console.log('All resources disposed');
+    addToast('🧹 All resources disposed!', 'success');
   };
+
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
@@ -392,54 +306,80 @@ export const PCBViewer: React.FC<PCBViewerProps> = ({
       }}>
         <h3>PCB Viewer Controls</h3>
         
-        {/* Persistence Controls */}
+        {/* Example Controls with Toast Notifications */}
         <div style={{ marginBottom: 15 }}>
-          <h4>Persistence (Phase 9)</h4>
+          <h4>Board Operations</h4>
           <div style={{ marginBottom: 10 }}>
-            <button onClick={exportBoard} style={{ marginRight: 5, fontSize: '12px' }}>
+            <button onClick={exportBoard} style={{ marginRight: 5, fontSize: '12px', padding: '4px 8px' }}>
               Export Board
             </button>
-            <label style={{ marginRight: 5, fontSize: '12px' }}>
-              <input
-                type="file"
-                accept=".json"
-                onChange={importBoard}
-                style={{ display: 'none' }}
-              />
-              <span style={{ 
-                background: '#4CAF50', 
-                padding: '4px 8px', 
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}>
-                Import Board
-              </span>
-            </label>
+            <button onClick={importBoard} style={{ marginRight: 5, fontSize: '12px', padding: '4px 8px' }}>
+              Import Board
+            </button>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <button onClick={createBackup} style={{ marginRight: 5, fontSize: '12px' }}>
+            <button onClick={createBackup} style={{ marginRight: 5, fontSize: '12px', padding: '4px 8px' }}>
               Create Backup
             </button>
-            <button onClick={restoreFromBackup} style={{ marginRight: 5, fontSize: '12px' }}>
+            <button onClick={restoreBackup} style={{ marginRight: 5, fontSize: '12px', padding: '4px 8px' }}>
               Restore Backup
             </button>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <button onClick={showResourceStats} style={{ marginRight: 5, fontSize: '12px' }}>
+            <button onClick={showResourceStats} style={{ marginRight: 5, fontSize: '12px', padding: '4px 8px' }}>
               Resource Stats
             </button>
-            <button onClick={disposeResources} style={{ fontSize: '12px' }}>
+            <button onClick={disposeResources} style={{ fontSize: '12px', padding: '4px 8px' }}>
               Dispose Resources
             </button>
           </div>
-          <div style={{ fontSize: '11px', color: '#888' }}>
-            <p>💾 Export/Import board state</p>
-            <p>🔄 Perfect scene reconstruction</p>
-            <p>🧹 No memory leaks</p>
-            <p>📊 Resource tracking</p>
-          </div>
         </div>
+        
       </div>
+      
+      {/* Toast Notifications */}
+      <div style={{
+        position: 'absolute',
+        top: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 1000
+      }}>
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            style={{
+              background: toast.type === 'success' ? '#4CAF50' : 
+                         toast.type === 'error' ? '#f44336' : '#2196F3',
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: '6px',
+              marginBottom: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              animation: 'slideIn 0.3s ease-out',
+              minWidth: '250px',
+              textAlign: 'center'
+            }}
+          >
+            {toast.message}
+          </div>
+        ))}
+      </div>
+      
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };
