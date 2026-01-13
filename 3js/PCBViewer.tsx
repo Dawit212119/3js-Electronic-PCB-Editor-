@@ -6,6 +6,7 @@ import { Pads } from './components/Pads';
 import { Traces } from './components/Traces';
 import { SMDPadManager } from './components/SMDPadManager';
 import { TraceManager } from './components/TraceManager';
+import { Serialization } from './utils/Serialization';
 
 interface Toast {
   id: string;
@@ -196,11 +197,67 @@ export const PCBViewer: React.FC<PCBViewerProps> = ({
 
   // Example functions with toast notifications
   const exportBoard = () => {
-    addToast('📤 Board exported successfully!', 'success');
+    console.log('Export button clicked');
+    if (!boardRef.current || !padsRef.current || !tracesRef.current || 
+        !smdPadManagerRef.current || !traceManagerRef.current) {
+      console.error('Missing references for export');
+      addToast('❌ Cannot export: Missing components', 'error');
+      return;
+    }
+
+    try {
+      console.log('Starting export...');
+      const boardData = Serialization.exportBoard(
+        boardRef.current,
+        padsRef.current,
+        tracesRef.current,
+        smdPadManagerRef.current,
+        traceManagerRef.current
+      );
+      
+      console.log('Board data exported:', boardData);
+      Serialization.downloadBoardData(boardData, `pcb_board_${new Date().toISOString().slice(0, 10)}.json`);
+      console.log('Download initiated');
+      addToast('📤 Board exported successfully!', 'success');
+    } catch (error) {
+      console.error('Export failed:', error);
+      addToast('❌ Export failed: ' + (error as Error).message, 'error');
+    }
   };
 
-  const importBoard = () => {
-    addToast('📥 Board imported successfully!', 'success');
+  const importBoard = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      addToast('⚠️ No file selected', 'info');
+      return;
+    }
+
+    if (!boardRef.current || !padsRef.current || !tracesRef.current || 
+        !smdPadManagerRef.current || !traceManagerRef.current) {
+      addToast('❌ Cannot import: Missing components', 'error');
+      return;
+    }
+
+    Serialization.loadBoardFromFile(file)
+      .then(boardData => {
+        Serialization.importBoard(
+          boardData,
+          boardRef.current!,
+          padsRef.current!,
+          tracesRef.current!,
+          smdPadManagerRef.current!,
+          traceManagerRef.current!
+        );
+        console.log('Board imported successfully');
+        addToast('📥 Board imported successfully!', 'success');
+      })
+      .catch(error => {
+        console.error('Import failed:', error);
+        addToast('❌ Import failed: ' + (error as Error).message, 'error');
+      });
+    
+    // Reset file input
+    event.target.value = '';
   };
 
   const createBackup = () => {
@@ -312,9 +369,23 @@ export const PCBViewer: React.FC<PCBViewerProps> = ({
             <button onClick={exportBoard} style={{ marginRight: 5, fontSize: '12px', padding: '4px 8px' }}>
               Export Board
             </button>
-            <button onClick={importBoard} style={{ marginRight: 5, fontSize: '12px', padding: '4px 8px' }}>
-              Import Board
-            </button>
+            <label style={{ marginRight: 5, fontSize: '12px' }}>
+              <input
+                type="file"
+                accept=".json"
+                onChange={importBoard}
+                style={{ display: 'none' }}
+              />
+              <span style={{ 
+                background: '#4CAF50', 
+                padding: '4px 8px', 
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}>
+                Import Board
+              </span>
+            </label>
           </div>
           <div style={{ marginBottom: 10 }}>
             <button onClick={createBackup} style={{ marginRight: 5, fontSize: '12px', padding: '4px 8px' }}>
